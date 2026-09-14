@@ -1,0 +1,46 @@
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  # Lets you trigger a redeploy by hand from the Actions tab without a push.
+  workflow_dispatch:
+
+# Needed by actions/deploy-pages to publish via the Pages API/OIDC token,
+# not a repo secret you need to create.
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Only one Pages deployment at a time; a newer push cancels a stuck job
+# rather than queuing behind it, but never cancels a deployment already
+# in progress (partial-publish risk).
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+
+      # No build step: public/ is already the finished static site (a
+      # single self-contained index.html plus its data/ and data_test/
+      # files) -- this just packages it for the next step.
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: ./public
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
